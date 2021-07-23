@@ -125,7 +125,7 @@ inline void generete_points(int path_size, vector<Point> & new_points, const Car
     double x_point = 0;
     int points = 30;
     //start of the simulator
-    if(pos.s < 130 && ref_speed<20)
+    if(/*pos.s < 130 &&*/ ref_speed<20)
     {
         points = 10;
     }

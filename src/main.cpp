@@ -33,6 +33,12 @@ void ReadWaypoints(vector<Waypoint> & map_waypoints)
         map_waypoints.push_back(waypoint);
     }
 }
+struct state
+{
+    int lane = 1;
+    double ref_speed = 0;
+
+};
 int main()
 {
     uWS::Hub h;
@@ -43,13 +49,11 @@ int main()
 
     // The max s value before wrapping around the track back to 0
     double max_s = 6945.554;
-    double ref_speed = 0;
-    int lane = 1;
+
+    state state;
 
 
-
-
-    h.onMessage([&map_waypoints, &ref_speed, &lane]
+    h.onMessage([&map_waypoints, &state]
                 (uWS::WebSocket<uWS::SERVER> ws, char *data, size_t length,
                  uWS::OpCode opCode)
     {
@@ -108,38 +112,192 @@ int main()
             else if( car.speed == 0)
             {
                 //restart case
-                ref_speed = 0;
+                state.ref_speed = 0;
+                if(car.d<4)
+                {
+                    state.lane = 0;
+                }
+                else if (car.d < 8)
+                {
+                    state.lane = 1;
+                }
+                else
+                {
+                    state.lane = 2;
+                }
+
             }
 
             bool too_close = false;
+
+            vector<int> left_lane;
+            vector<int> center_lane;
+            vector<int> right_lane;
             for(int i = 0; i < sensor_fusion.size(); i++)
             {
                 float d = sensor_fusion[i][6];
-                if(d < 4*(lane+1) && d > 4*lane)
+
+                double vx = sensor_fusion[i][3];
+                double vy = sensor_fusion[i][4];
+                double check_car_s = sensor_fusion[i][5];
+                double speed = distance(vx, vy);
+
+                check_car_s += path_size * .02 * speed;
+
+                if( check_car_s < car.s )
+                {
+                    continue;
+                }
+                if( d <4)
+                {
+                    left_lane.push_back(i);
+                }
+                else if (d>=4 && d<8)
+                {
+                    center_lane.push_back(i);
+                }
+                else if(d>=8)
+                {
+                    right_lane.push_back(i);
+                }
+            }
+            vector<int> current_lane;
+            if( state.lane == 0)
+            {
+                current_lane = left_lane;
+            }
+            else if (state.lane == 1)
+            {
+                current_lane = center_lane;
+            }
+            else
+            {
+                current_lane = right_lane;
+            }
+
+            /*if(center_lane.size() == 0)
+            {
+                lane = 1;
+            }
+            else if(left_lane.size() == 0)
+            {
+                lane = 0;
+            }
+            else if (right_lane.size()==0)
+            {
+                lane = 2;
+            }*/
+            for(int j = 0; j < current_lane.size(); j++)
+            {
+                int i = current_lane[j];
+
+
+                double vx = sensor_fusion[i][3];
+                double vy = sensor_fusion[i][4];
+                double check_car_s = sensor_fusion[i][5];
+                double speed = distance(vx, vy);
+
+                check_car_s += path_size * .02 * speed;
+
+                if( check_car_s > car.s && check_car_s - car.s < 30)
+                {
+                    too_close = true;
+                    break;
+                }
+            }
+            if( too_close)
+            {
+                bool left_ok=true;
+                if( state.lane == 1)
                 {
 
-                    double vx = sensor_fusion[i][3];
-                    double vy = sensor_fusion[i][4];
-                    double check_car_s = sensor_fusion[i][5];
-                    double speed = distance(vx, vy);
-
-                    check_car_s += path_size * .02 * speed;
-
-                    if( check_car_s > car.s && check_car_s - car.s < 30)
+                    for(int j = 0; j < left_lane.size(); j++)
                     {
-                        too_close = true;
-                        //lane =2;
+                        int i = left_lane[j];
+
+
+                        double vx = sensor_fusion[i][3];
+                        double vy = sensor_fusion[i][4];
+                        double check_car_s = sensor_fusion[i][5];
+                        double speed = distance(vx, vy);
+
+                        check_car_s += path_size * .02 * speed;
+
+                        if( check_car_s > car.s && check_car_s - car.s < 30)
+                        {
+                            left_ok = false;
+                            break;
+                        }
+                    }
+                    if(left_ok)
+                    {
+                        state.lane -=1;
+                    }
+
+                    if(!left_ok)
+                    {
+                        bool right_ok = true;
+                        for(int j = 0; j < right_lane.size(); j++)
+                        {
+                            int i = right_lane[j];
+
+
+                            double vx = sensor_fusion[i][3];
+                            double vy = sensor_fusion[i][4];
+                            double check_car_s = sensor_fusion[i][5];
+                            double speed = distance(vx, vy);
+
+                            check_car_s += path_size * .02 * speed;
+
+                            if( check_car_s > car.s && check_car_s - car.s < 30)
+                            {
+                                right_ok = false;
+                                break;
+                            }
+                        }
+                        if(right_ok)
+                        {
+                            state.lane +=1;
+                        }
+                    }
+                }
+                else if(state.lane == 0 || state.lane ==2)
+                {
+                    //center
+
+                    bool center_ok = true;
+                    for(int j = 0; j < center_lane.size(); j++)
+                    {
+                        int i = center_lane[j];
+
+
+                        double vx = sensor_fusion[i][3];
+                        double vy = sensor_fusion[i][4];
+                        double check_car_s = sensor_fusion[i][5];
+                        double speed = distance(vx, vy);
+
+                        check_car_s += path_size * .02 * speed;
+
+                        if( check_car_s > car.s && check_car_s - car.s < 30)
+                        {
+                            center_ok = false;
+                            break;
+                        }
+                    }
+                    if(center_ok)
+                    {
+                        state.lane = 1;
                     }
                 }
             }
 
             if( too_close)
             {
-                ref_speed -= 0.220;
+                state.ref_speed -= 0.220;
             }
-            else if (ref_speed< 49)
+            else if (state.ref_speed< 49.7)
             {
-                ref_speed += 0.220;
+                state.ref_speed += 0.220;
             }
 
             Car pos;
@@ -149,10 +307,10 @@ int main()
             pos.yaw = car.yaw;
 
             tk::spline s;
-            ConstructSpline(s, path_size, car, pos, map_waypoints, previous_path_x, previous_path_y, lane);
+            ConstructSpline(s, path_size, car, pos, map_waypoints, previous_path_x, previous_path_y, state.lane);
 
             vector<Point>  new_points;
-            generete_points(path_size, new_points, pos, s, ref_speed);
+            generete_points(path_size, new_points, pos, s, state.ref_speed);
 
             vector<double> next_x_vals;
             vector<double> next_y_vals;
