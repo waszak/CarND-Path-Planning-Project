@@ -116,7 +116,6 @@ inline void denormalize(vector<Point> & pts, const Car& pos )
 
 inline void generete_points(int path_size, vector<Point> & new_points, const Car& pos, tk::spline& s,  double ref_speed = 49.0)
 {
-
     double target_x = 30.0;
     double target_y = s(target_x);
     double target_dist = distance(target_x, target_y);
@@ -124,9 +123,21 @@ inline void generete_points(int path_size, vector<Point> & new_points, const Car
 
     double delta_x = target_x/N;
     double x_point = 0;
-
-    for (int i = 1; i < 50-path_size; ++i)
+    int points = 30;
+    //start of the simulator
+    if(pos.s < 130 && ref_speed<20)
     {
+        points = 10;
+    }
+    for (int i = 1; i < points-path_size; ++i)
+    {
+        /*if (ref_speed< 49.7)
+        {
+            ref_speed += 0.220;
+            N = target_dist/(0.02*ref_speed/2.24);
+            delta_x = target_x/N;
+
+        }*/
         x_point +=  delta_x;
         Point point;
         point.x = x_point;
@@ -276,7 +287,6 @@ inline void ConstructSpline(tk::spline & s, int path_size,const Car& car, Car &p
     {
         double prev_x = car.x - cos(car.yaw);
         double prev_y = car.y - sin(car.yaw);
-
         pts_x.push_back(prev_x);
         pts_y.push_back(prev_y);
 
@@ -285,6 +295,7 @@ inline void ConstructSpline(tk::spline & s, int path_size,const Car& car, Car &p
     }
     else
     {
+        //std::cout<<car.yaw<<std::endl;
         pos.x = previous_path_x[path_size-1];
         pos.y = previous_path_y[path_size-1];
 
@@ -308,8 +319,8 @@ inline void ConstructSpline(tk::spline & s, int path_size,const Car& car, Car &p
     normalize(pts_x, pts_y, pos);
 
     //s.set_boundary(tk::spline::bd_type::second_deriv, pts_y[0],tk::spline::bd_type::second_deriv, pts_y[pts_y.size()-1]);
-    s.set_points(pts_x, pts_y);
-    //s.set_points(pts_x, pts_y,tk::spline::spline_type::cspline_hermite);
+    //s.set_points(pts_x, pts_y);
+    s.set_points(pts_x, pts_y,tk::spline::spline_type::cspline_hermite);
     //s.set_points(pts_x, pts_y,tk::spline::spline_type::linear);
 }
 
