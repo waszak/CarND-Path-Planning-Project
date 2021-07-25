@@ -194,12 +194,12 @@ struct VehicleController
         double cost_left = speed_lane(car, left);
         double cost_right = speed_lane(car, right);
 
-        if(state.lane ==0 && cost_right == 0  && !has_collision(car, center, path_size, false))
+        if(state.lane ==0 && cost_right == 0  && cost_left !=0 && !has_collision(car, center, path_size, false))
         {
             state.lane = 1;
             return;
         }
-        else if(state.lane == 2 && cost_left == 0 && !has_collision(car, center, path_size, false))
+        else if(state.lane == 2 && cost_left == 0 && cost_right !=0 && !has_collision(car, center, path_size, false))
         {
             state.lane = 1;
             return;
