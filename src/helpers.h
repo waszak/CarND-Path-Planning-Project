@@ -6,9 +6,13 @@
 #include <vector>
 #include "spline.h"
 #include "car.h"
+#include "Eigen-3.3/Eigen/Dense"
 // for convenience
 using std::string;
 using std::vector;
+
+using Eigen::MatrixXd;
+using Eigen::VectorXd;
 
 // Checks if the SocketIO event has JSON data.
 // If there is data the JSON object in string format will be returned,
@@ -89,6 +93,21 @@ inline void copy_elements(vector<double> & next_x_vals,  vector<double> & next_y
     }
 }
 
+inline int  get_lane(double d)
+{
+    if(d<4)
+    {
+        return  0;
+    }
+    else if (d < 8)
+    {
+        return 1;
+    }
+    else
+    {
+        return 2;
+    }
+}
 
 inline void normalize(vector<double> & pts_x, vector<double> & pts_y, const Car& pos)
 {
@@ -123,21 +142,14 @@ inline void generete_points(int path_size, vector<Point> & new_points, const Car
 
     double delta_x = target_x/N;
     double x_point = 0;
-    int points = 30;
+    int points = 50;
     //start of the simulator
-    if(/*pos.s < 130 &&*/ ref_speed<20)
+    if(ref_speed<10)
     {
         points = 10;
     }
     for (int i = 1; i < points-path_size; ++i)
     {
-        /*if (ref_speed< 49.7)
-        {
-            ref_speed += 0.220;
-            N = target_dist/(0.02*ref_speed/2.24);
-            delta_x = target_x/N;
-
-        }*/
         x_point +=  delta_x;
         Point point;
         point.x = x_point;
@@ -148,6 +160,48 @@ inline void generete_points(int path_size, vector<Point> & new_points, const Car
 
     denormalize(new_points, pos);
 }
+
+
+
+double poly_value(vector<double>& poly, double t)
+{
+     //a_0 + a_1 * t + a_2 * t**2 + a_3 * t**3 + a_4 * t**4 + a_5 * t**5
+
+     double sum = 0;
+     assert(poly.size()==6);
+     double tPower = 1;
+     for(int i =0; i <6;i++)
+     {
+         sum += poly[i]*tPower;
+         tPower *= t;
+     }
+     return sum;
+}
+
+inline void generete_points(int path_size, vector<Point> & new_points, const Car& pos, vector<double>& poly_x, vector<double>& poly_y,  double ref_speed = 49.0)
+{
+    double target_x = 30.0;
+    int points = 50;
+    //start of the simulator
+    if(ref_speed<10)
+    {
+        points = 10;
+    }
+    double inc = 0.02;
+    double x = inc;
+    for (int i = 1; i < points-path_size; ++i)
+    {
+        x+=inc;
+        Point point;
+        point.x = poly_value(poly_x, x);//= x_point;
+        point.y = poly_value(poly_y, x); //=  s(x_point);
+
+        new_points.push_back(point);
+    }
+
+    denormalize(new_points, pos);
+}
+
 
 // Calculate closest waypoint to current x, y position
 int ClosestWaypoint(double x, double y, const vector<double> &maps_x,
@@ -323,5 +377,42 @@ inline void ConstructSpline(tk::spline & s, int path_size,const Car& car, Car &p
     s.set_points(pts_x, pts_y,tk::spline::spline_type::cspline_hermite);
     //s.set_points(pts_x, pts_y,tk::spline::spline_type::linear);
 }
+
+
+vector<double> JMT(vector<double> &vect, double T=2) {
+
+  MatrixXd A = MatrixXd(3, 3);
+  A << T*T*T, T*T*T*T, T*T*T*T*T,
+       3*T*T, 4*T*T*T,5*T*T*T*T,
+       6*T, 12*T*T, 20*T*T*T;
+
+  MatrixXd B = MatrixXd(3,1);
+  B << vect[3]-(vect[0]+vect[1]*T+.5*vect[2]*T*T),
+       vect[4]-(vect[1]+vect[2]*T),
+       vect[5]-vect[2];
+
+  MatrixXd Ai = A.inverse();
+
+  MatrixXd C = Ai*B;
+
+  vector <double> result = {vect[0], vect[1], .5*vect[2]};
+
+  for(int i = 0; i < C.size(); ++i) {
+    result.push_back(C.data()[i]);
+  }
+
+  return result;
+}
+
+/*
+inline void ConstructQuintic()
+{
+
+
+
+    poly_x= JMT(pts_x);
+    poly_y= JMT(pts_y);
+}*/
+
 
 #endif  // HELPERS_H
