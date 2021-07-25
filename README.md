@@ -1,6 +1,25 @@
 # CarND-Path-Planning-Project
 Self-Driving Car Engineer Nanodegree Program
-   
+
+### Reflection
+There is no crossorads, and we only decide what lane we want to chose. So basically we only do Lane Planning. 
+We can stay on the same lane and we will get to goal. My assumption for lane planning. 
+
+1. If center lane is empty we allways try to change to center lane.
+2. If we are on left/right we only change to center lane first if there is no collision.
+3. If we are on left/right lane and right/lane is empty we try to change to center lane if there is no collision
+
+Once we chose perfect lane make sure we can change the lane. We use spline, to create path.
+
+Drawbacks of algorithm:
+1. When we are on left/right lane and right/left lane is empty we are sometimes stuck on full lane because 1-3 assumptions.
+In this case we need to slow down and change to center lane.
+(This doesn't work because of collosion for changing to center lane). 
+2. Sometimes it changes the lane to slower one because there was no collision at given moment but then it is stuck.
+
+   ![example](https://user-images.githubusercontent.com/3121149/126901619-0beb36c1-b559-476b-a994-322a10662f85.jpg)
+![example2](https://user-images.githubusercontent.com/3121149/126901627-71fa9271-14af-4284-bae8-544b802fd83b.jpg)
+
 ### Simulator.
 You can download the Term3 Simulator which contains the Path Planning Project from the [releases tab (https://github.com/udacity/self-driving-car-sim/releases/tag/T3_v1.2).  
 
